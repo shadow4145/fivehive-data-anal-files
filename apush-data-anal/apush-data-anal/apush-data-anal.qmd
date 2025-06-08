@@ -1,0 +1,862 @@
+---
+title: "apush-data-anal-FiveHive"
+format: html
+editor: visual
+---
+
+```{r, results='hide', message=FALSE, warning=FALSE}
+library(tidyverse)
+library(ggplot2)
+library(mosaic)
+library(dplyr)
+library(pubtheme)
+library(janitor)
+library(leaflet)
+library(gganimate)
+library(shiny)
+library(stringr)
+library(patchwork)
+```
+
+\*This document is intended to complement the graphs, charts, and other
+
+data analysis already done in the google spreadsheet by providing deeper
+
+analyses and examining *relationships* between variables for APUSH data.
+
+\*Data is updated as of 05/31/2025.
+
+# I. Reading the Data
+
+```{r}
+d = read.csv('data/apush.csv')
+head(d)
+```
+
+# II. Cleaning the Data
+
+•Initial examination suggests the data is readable enough to not demand any
+
+significant cleaning at the very beginning.
+
+•Instead, we jump right into the next steps and clean *as needed*
+
+(our end product is not the data set but rather a document that
+
+cleanly summarizes key findings from the data analysis, as well as other info).
+
+•For convenience and readability, we will still do some of our
+
+necessary cleaning here that we would've done later on.
+
+```{r}
+#Renaming columns
+
+d2 = d %>%
+  rename(SCORE = What.did.you.score.on.the.AP.United.States.History.exam.) %>%
+  rename(class = Grade.Level) %>%
+  rename(teach.prep = Rate.the.quality.of.your.teacher.s.preparation.for.the.exam.) %>%
+  rename(overall.prep = 
+           How.well.prepared.did.you.feel.for.your.exam) %>%
+  rename(overall.diff = How.hard.is.AP.United.States.History.) %>%
+  rename(other.courses = Other.AP.Courses) %>%
+  rename(expected.diff = Expected.difficulty.of.course) %>%
+  rename(enjoy = Is.AP.United.States.History.fun.) %>%
+  rename(ai = Did.you.use.AI.as.a.learning.tool.) %>%
+  rename(theme1 = X.THEME.1..AMERICAN.AND.NATIONAL.IDENTITY..NAT..) %>%
+  rename(theme2 = X..THEME.2..WORK..EXCHANGE..AND.TECHNOLOGY..WXT..) %>%
+  rename(theme3 = X.THEME.3..GEOGRAPHY.AND.THE.ENVIRONMENT..GEO..) %>%
+  rename(theme4 = X.THEME.4..MIGRATION.AND.SETTLEMENT..MIG..) %>%
+  rename(theme5 = X.THEME.5..POLITICS.AND.POWER..PCE..) %>%
+  rename(theme6 = X.THEME.6..AMERICA.IN.THE.WORLD..WOR...) %>%
+  rename(theme7 = X.THEME.7..AMERICAN.AND.REGIONAL.CULTURE..ARC..) %>%
+  rename(theme8 = X.THEME.8..SOCIAL.STRUCTURES..SOC..) %>%
+  rename(Developments.and.Processes = X.Developments.and.Processes.) %>%
+  rename(Sourcing.and.Citation = X.Sourcing.and.Situation.) %>%
+  rename(Claim.and.Evidence.in.Sources = X.Claims.and.Evidence.in.sources.) %>%
+  rename(Contextualization = X.Contextualization.) %>%
+  rename(Making.Connections = X.Making.Connections.) %>%
+  rename(Argumentation = X.Argumentation.)
+
+
+```
+
+# III. Visualization and Analysis
+
+•Graphs and charts have already been made for most questions
+
+in the spreadsheet; however, we may still be interested in seeing
+
+if there are possible relationships.
+
+•Example: We might want to look at the distribution of scores for each
+
+grade level.
+
+•Motivation: Some people say that you should only take APUSH when you're a
+
+junior or senior. But is that really true? Could it really be that how older one is
+
+(to graduating) has some effects on the exam score?
+
+```{r}
+g = d2 %>%
+  ggplot(aes(class, SCORE)) +
+  geom_boxplot()
+
+g
+```
+
+Looks like the only groups that have multiple values of score are juniors
+
+and sophomores. The rest are concentrated on only one value. This likely
+
+indicates not as many responses in these groups as for juniors
+
+and sophomores. We can take a look at these two individually and compare
+
+their distribution of scores:
+
+```{r}
+#Sophomores
+d2_sopho = d2 %>%
+  filter(class == 'Sophomore')
+
+g_sopho = d2_sopho %>%
+  ggplot(aes(x=SCORE)) +
+  geom_histogram(bins = 3) +
+  labs(title = "Histogram of Exam Scores (Sophomores)",
+       xlab = "Score",
+       ylab = "Frequency")
+
+g_sopho
+```
+
+```{r}
+d2_junior = d2 %>%
+  filter(class == 'Junior')
+
+g_junior = d2_junior %>%
+  ggplot(aes(x=SCORE)) +
+  geom_histogram(bins=3) + 
+    labs(title = "Histogram of Exam Scores (Juniors)",
+       xlab = "Score",
+       ylab = "Frequency")
+
+g_junior
+```
+
+It does appear that juniors have a higher frequency of better scores, but
+
+this might this be due to the larger sample size (more juniors happen to have
+
+responded to the survey)?
+
+```{r}
+length(d2_junior$SCORE)
+length(d2_sopho$SCORE)
+```
+
+Let's take a look at percentages, which is more fair when comparing
+
+count data.
+
+```{r}
+
+paste("% of 'good' scores for juniors (4/5): ", 
+      sum(d2_junior$SCORE == 4 | d2_junior$SCORE == 5) / 
+        length(d2_junior$SCORE))
+paste("% of 'good' scores for sophomores (4/5): ", 
+      sum(d2_sopho$SCORE == 4 | d2_sopho$SCORE == 5) / 
+        length(d2_sopho$SCORE))
+paste("% of max scores for juniors (5): ", 
+      sum(d2_junior$SCORE == 5) / length(d2_junior$SCORE))
+paste("% of max scores for sophomores (5): ", 
+      sum(d2_sopho$SCORE == 5) / length(d2_sopho$SCORE))
+```
+
+Something interesting just happened. When we look at 4s *and* 5s, we see
+
+that juniors slightly edge out, but when just looking at 5s, the maximum
+
+possible score reported on the exam, there is a significant proportion of
+
+sophomores vs. juniors! Why might this be? It makes sense if we consider
+
+that those who take the course/exam as a sophomore may feel more confident
+
+in themselves and could be stronger students—hence, they take it earlier than
+
+some of their peers. Whereas for juniors, there are a larger amount of people
+
+overall and this includes those who may be slightly weaker in these
+
+types of exams, but feel like they still need to take it before they graduate.
+
+Do these findings apply to other students outside of the respondents? It turns
+
+out, yes! Looking at the data published by the CollegeBoard, we see these
+
+trends almost exactly match up
+
+(link:<https://reports.collegeboard.org/media/pdf/ap-score-distributions-for-specific-student-grade-level-groups-2022.pdf>):
+
+![](pic1.jpeg)
+
+Even though significantly more juniors *took* the exam $(N=1,872,496)$ ,
+
+a higher proportion of sophomores scored a 5 ($25.69\%$ vs. $23.87\%$).
+
+Does this mean you won't get a 5 because you're a junior? No!
+
+Of course it's more complicated than that and it likely depends more on
+
+how much effort you yourself put it, but this is an interesting insight
+
+that the data helped to reveal.
+
+So clearly, we're interested in scores, as it's a solid way to
+
+quantify performance, even if it's not always perfect. Is there other
+
+variables that we want to examine? Another factor that might be more solid
+
+than grade level could be preparedness for the exam. One variable we
+
+gathered data on is the level of perceived preparedness by the teachers.
+
+```{r}
+
+g2 = d2 %>%
+  ggplot(aes(x=teach.prep, y = SCORE)) +
+  geom_point(alpha=0.2) +
+  geom_smooth() +
+  labs(title = "Scatterplot of teacher preparedness vs. score",
+       x = "Teacher Prep Rating",
+       y = "Exam Score")
+
+g2
+```
+
+Using alpha, which makes points more transparent with less *overlap*, we see
+
+that there could be some relationship. Points are more solid for scores of
+
+5 when the preparedness rating is higher, indicating greater frequency of
+
+occurrence (more students who got an exam score of 5 reported
+
+a score of 8, 9, or 10 the most for how well their teacher prepared them). We
+
+can also see this somewhat with the trend line, as it has a negative relationship
+
+(slope) with score for small values of teaching rating but then it increases
+
+at the midway point, which is exactly what we might expect!
+
+At this point, there are a few more questions we might have to dive deeper on.
+
+I finish this section by presenting some final visualizations for these
+
+questions:
+
+**Is there any relationship between how the student feels overall #in terms of preparedness vs. how well their teacher prepared them?**
+
+```{r}
+
+g3 = d2 %>%
+  ggplot(aes(x=teach.prep, y=overall.prep)) +
+  geom_point() +
+  geom_smooth()
+
+g3
+```
+
+**What other classes are students taking, and do these have some relationship with how well they scored on the exam?**
+
+We know APUSH is a history class—no arguments there! Since other
+
+history use much of the same course/exam format and government classes
+
+are sort of in the same ballpark of "studying one's country," they
+
+may have some correlation with performance in APUSH.
+
+```{r}
+
+#Let's compare history/govt. vs. non-history/govt. first
+
+d2_good_courses = d2 %>%
+    mutate(good.course = as.integer(
+      grepl("[Hh]istory|[Ee]uro|[Ww]orld|[Gg]ov", other.courses, ignore.case = TRUE)
+    )
+  )
+
+d2_good_courses_only = d2_good_courses %>%
+  filter(good.course == 1)
+
+g4 = d2_good_courses_only %>%
+  ggplot(aes(x = SCORE)) +
+  geom_histogram(
+    aes(y = ..count.. / sum(..count..) * 100),
+    bins = 3,               
+    fill = "steelblue",
+    color = "white",
+    alpha = 0.7
+  ) +
+  scale_y_continuous(
+    name      = "Percentage of observations (%)",
+    expand    = expansion(mult = c(0, 0.05))
+  ) +
+  labs(
+    x    = "Exam Scores",
+    title = "Scores of those taking other history/govt classes (%)"
+  ) +
+  theme_minimal()
+
+g4
+```
+
+```{r}
+d2_other_courses_only = d2_good_courses %>%
+  filter(good.course == 0)
+
+g4_2 = d2_other_courses_only %>%
+  ggplot(aes(x = SCORE)) +
+  geom_histogram(
+    aes(y = ..count.. / sum(..count..) * 100),
+    bins = 3,               
+    fill = "steelblue",
+    color = "white",
+    alpha = 0.7
+  ) +
+  scale_y_continuous(
+    name      = "Percentage of observations (%)",
+    expand    = expansion(mult = c(0, 0.05))
+  ) +
+  labs(
+    x    = "Exam Scores",
+    title = "Scores of those NOT taking other history/govt classes (%)"
+  ) +
+  theme_minimal()
+
+g4_2
+```
+
+```{r}
+score.diff.3 = mean(d2_good_courses_only$SCORE == 3) - mean(d2_other_courses_only$SCORE == 3)
+score.diff.4 = mean(d2_good_courses_only$SCORE == 4) - mean(d2_other_courses_only$SCORE == 4)
+score.diff.5 = mean(d2_good_courses_only$SCORE == 5) - mean(d2_other_courses_only$SCORE == 5)
+
+good.score.diff = c(score.diff.3*100, 
+                    score.diff.4*100, 
+                    score.diff.5*100)
+
+score.diff.df = data.frame(x=c(3,4,5), y=good.score.diff)
+
+g4_3 = score.diff.df %>%
+  ggplot(aes(x=factor(x), y=y)) +
+  geom_col(fill = "steelblue", width = 0.6) +
+  geom_hline(yintercept = 0, linetype = "solid", 
+             color = "black", size = 0.5) +
+  scale_x_discrete(name = "Exam Scores") +
+  scale_y_continuous(name = "Difference (%)") +
+  ggtitle("Proportional Difference in Scores (hist/govt. minus non-hist/govt.)") +
+  theme_minimal()
+
+g4_3
+```
+
+Interesting, so if we only look at the proportion of 5s, what class(es) will be
+
+associated with it the most, i.e. what other class are people taking that will
+
+show up the most when we filter by only those who got 5s?
+
+```{r}
+d2_onlyfives = d2 %>%
+  filter(SCORE == 5)
+
+unique(d2_onlyfives$other.courses)
+```
+
+```{r}
+courses = c(
+  "Computer Science A",
+  "Calculus AB, Chemistry, Environmental Science, Statistics",
+  "Computer Science Principles, Precalculus, Spanish Language and Culture, Statistics",
+  "",
+  "Art History, Precalculus",
+  "Calculus AB, Chemistry, English Language and Composition, Spanish Language and Culture",
+  "Biology, Calculus BC, English Language and Composition",
+  "Computer Science Principles",
+  "Biology, English Literature and Composition, Spanish Language and Culture, Statistics",
+  "Chemistry, English Language and Composition, Statistics",
+  "Chemistry, English Language and Composition, Physics C: Electricity and Magnetism, Physics C: Mechanics, Research, Statistics",
+  "Biology, Computer Science Principles, English Language and Composition",
+  "English Language and Composition, Environmental Science, Physics 1: Algebra Based, Precalculus",
+  "Biology, English Language and Composition",
+  "Calculus AB",
+  "Computer Science A, Statistics",
+  "Computer Science A, English Language and Composition",
+  "Comparative Government and Politics, English Language and Composition, Physics C: Electricity and Magnetism, Physics C: Mechanics",
+  "Chemistry, English Language and Composition, Psychology",
+  "English Language and Composition",
+  "Biology, Calculus BC, English Language and Composition, French Language and Culture",
+  "Computer Science Principles, English Language and Composition",
+  "World History: Modern",
+  "English Literature and Composition, Precalculus",
+  "Biology, Computer Science A",
+  "Comparative Government and Politics, United States Government and Politics",
+  "English Language and Composition, Physics 1: Algebra Based, Precalculus",
+  "Calculus BC, Physics C: Mechanics",
+  "Chinese Language and Culture, Precalculus",
+  "English Language and Composition, Spanish Language and Culture",
+  "Chemistry, English Language and Composition, Psychology, Research"
+)
+
+
+split_list = strsplit(courses, ",")
+
+
+all_names = trimws(unlist(split_list))
+
+
+all_names = all_names[all_names != ""]
+
+
+unique_courses = sort(unique(all_names))
+
+unique_courses
+```
+
+```{r}
+keywords = unique_courses
+
+
+hits_per_kw <- sapply(keywords, function(k) {
+  sum(str_detect(d2_onlyfives$other.courses, 
+                 regex(k, ignore_case = TRUE)))
+})
+
+d2_onlyfives_course_count = data.frame(course = names(hits_per_kw),
+                                    count = as.integer(hits_per_kw),
+                                      row.names = NULL,
+                                      stringsAsFactors = FALSE)
+
+head(d2_onlyfives_course_count)
+```
+
+```{r}
+d2_good_courses_only_sorted = d2_onlyfives_course_count %>%
+  arrange(desc(count))
+
+head(d2_good_courses_only_sorted)
+```
+
+English Language and Composition is at the top and appears to far exceed
+
+any other course. This, of course, doesn't necessarily mean that taking this
+
+class will get you a 5 on the exam; it just happens that those who got a 5
+
+took it as another class the most vs. any other class. Still, it does make some
+
+degree of sense and one might be able to draw some arguments on the
+
+usefulness of skills (writing, analyzing text, etc.) between APUSH and English
+
+Language & Composition.
+
+**Expected vs. Actual perceived difficulty (before and after**
+
+**taking the course/exam)**
+
+```{r}
+g5 = d2 %>%
+  ggplot(aes(x=expected.diff, y=overall.diff))+
+  geom_point(alpha=0.4) +
+  geom_smooth() +
+  labs(title = "Expected vs. Actual Difficulty Rating for APUSH",
+       subtitle = "(*transparency factor alpha = 0.4 applied; darker
+       points = greater overlap in data)",
+       x = "Expected Rating (1-10)",
+       y = "Actual Rating (1-10)")
+
+g5
+```
+
+Relationship appears positive, except at around 7, where there is a dip.
+
+**Use of AI as a learning tool vs. Score**
+
+```{r}
+d2 = d2 %>%
+  mutate(ai.indicator = ifelse(ai == "Yes", 1, 0))
+
+d2_ai = d2 %>%
+  filter(ai.indicator == 1)
+
+d2_no_ai = d2 %>%
+  filter(ai.indicator == 0)
+```
+
+```{r}
+g6 = d2_ai %>%
+  ggplot(aes(x=SCORE)) +
+  geom_histogram(bins = 3, fill = "steelblue") +
+  labs(title = "Score distribution for students using AI as Learning Tool",
+       x = "Exam Score",
+       y = "Frequency")
+
+g6
+```
+
+```{r}
+g6_2 = d2_ai %>%
+  ggplot(aes(x = SCORE)) +
+  geom_histogram(
+    aes(y = ..count.. / sum(..count..) * 100),
+    bins = 3,               
+    fill = "steelblue") +
+  scale_y_continuous(
+    name      = "Percentage of students obtaining score",
+    expand    = expansion(mult = c(0, 0.05))
+  ) +
+  labs(
+    x    = "Exam Scores",
+    title = "Score distribution for AI-using students (%)"
+  )
+
+g6_2
+```
+
+```{r}
+g7 = d2_no_ai %>%
+  ggplot(aes(x=SCORE)) +
+  geom_histogram(bins = 3, fill = "firebrick1") +
+  labs(title = "Score distribution for students NOT using AI as tool",
+       x = "Exam Score",
+       y = "Frequency")
+
+g7
+```
+
+```{r}
+g7_2 = d2_no_ai %>%
+  ggplot(aes(x = SCORE)) +
+  geom_histogram(
+    aes(y = ..count.. / sum(..count..) * 100),
+    bins = 3,               
+    fill = "firebrick1") +
+  scale_y_continuous(
+    name      = "Percentage of students obtaining score",
+    expand    = expansion(mult = c(0, 0.05))
+  ) +
+  labs(
+    x    = "Exam Scores",
+    title = "Score distribution for non-AI using students (%)"
+  )
+
+g7_2
+```
+
+```{r}
+g6_2 + g7_2
+```
+
+Even though AI-using students have less observations than non-AI using
+
+students, it appears that the distribution of scores is nearly identical, possibly
+
+suggesting that using it as a learning tool for APUSH does not have
+
+a significant impact on score, either positively or negatively. However, one
+
+should also keep in mind the possibility of response bias—some students
+
+who did use AI may have said they didn't and some who didn't may have
+
+said they did. Possible reasons include forgetfulness and social desirability
+
+bias, e.g. wanting to appear as only relying on oneself to have obtained the
+
+score rather than using AI. Fear of academic consequences/retaliation/
+
+disciplinary measures is still possible but much less likely to be a
+
+possible reason because
+
+\(1\) The survey was anonymous and could not be traced back to anyone.
+
+\(2\) Even if it wasn't, most people would've only been traced back to their online
+
+accounts (which might not be easily connected to a real person)
+
+\(3\) Most importantly, use of AI as a *learning tool* was the question being
+
+asked, not as an exam tool. Most teachers permit it as a learning tool.
+
+# IV. Linear Models and Inferential Statistics
+
+**Linear Modelling**
+
+Can we create a regression model that relates scores to these
+
+multiple variables? Which model performs better when we include/remove
+
+variables?
+
+```{r}
+#Exam Score vs. Teacher preparation score
+#Quadratic regression might be appropriate here
+
+m1 = lm(SCORE ~ teach.prep + I(teach.prep^2), data = d2)
+```
+
+```{r}
+summary(m1)
+```
+
+Looks like there's a lot of variability that's not being captured by the model
+
+($r^2 \approx 0.04851$). This might be because a lot of people can still get 5s
+
+by preparing themselves. Does using overall preparation give better
+
+estimates and model?
+
+```{r}
+m2 = lm(SCORE ~ overall.prep, data = d2)
+summary(m2)
+```
+
+Better (adjusted $r^2 = 0.07171 > 0.04851)$, but maybe there is room
+
+for improvement.
+
+Let's think about what other factors could affect the score (course/exam
+
+difficulty, time management during exam). We should flip difficulty
+
+to get it on the same scale as the other two because higher ratings for prep
+
+and time management is what we might expect for higher scores
+
+but higher ratings for difficulty might expect lower scores.
+
+```{r}
+d2_reordered = d2 %>%
+  mutate(overall.diff = 11 - overall.diff)
+```
+
+```{r}
+m3 = lm(SCORE ~ overall.prep + 
+          overall.diff + 
+          Time.management.during.exam, data = d2_reordered)
+
+summary(m3)
+```
+
+Looks like it improved but not by much. Moreover, even though
+
+$r^2 = 0.1002$, adjusted $r^2$, which penalizes for unhelpful predictors,
+
+actually decreased. This is overall OK— $r^2$ isn't everything and it just
+
+shows that we can't capture all of the variability in exam score well,
+
+likely due to the predictors being subjective measures reported voluntarily
+
+by students. It could very well be that one student's interpretation of a
+
+rating of 10 for the difficulty of course/exam is different than another
+
+student's rating, and hence there is a mismatch that affects the model.
+
+This is supported by the fact that in our visualizations, we could see the
+
+data followed some trends that could be captured by some curve,
+
+but assumptions for linear models might not have been fully met.
+
+In a perfect world, we might have a much higher adjusted $r^2$ and a
+
+clearer relationship between score and the predictors, but it's enough
+
+that we were able to see some relationship in the frequency of the
+
+data (e.g. *more* students who rated some predictor highly scored better).
+
+**Inference on a population**
+
+Is there statistically significant evidence, based on our sample asking
+
+the corresponding questions, that the difference in means of all
+
+course taking students in their estimation of the expected difficulty vs.
+
+the actual difficulty of the course is not the same (e.g. misjudged the
+
+difficulty)?
+
+Some possible options are available, especially a paired t-test, but we would
+
+have to check certain assumptions:
+
+```{r}
+length(d2$expected.diff) > 30
+length(d2$overall.diff) > 30
+```
+
+```{r}
+df_inf = data.frame(a = d2$expected.diff, b = d2$overall.diff)
+
+g_inf = df_inf %>%
+  ggplot(aes(x=a-b)) + 
+  geom_histogram() +
+  labs(title = "Distribution of differences in expected vs. actual
+       difficulty ratings",
+       x = "Difficulty Rating (1-10)",
+       y = "Number of Students (Frequency)")
+
+g_inf
+```
+
+Not only is $n$ large, but the distribution of differences also looks fairly
+
+normal. From the official national dataset, we know that $N > 400,000$.
+
+```{r}
+length(d2$expected.diff) == length(d2$overall.diff)
+length(d2$expected.diff) < (1/10)*400000
+```
+
+Therefore, the sample is approximately independent. The only condition
+
+we can't be sure of is representative sampling, so we would only be able
+
+to more confidently generalize to populations with similar characteristics
+
+as survey respondents. A smaller issue is the fact that we are using an
+
+ordinal scale, but we chose this test over something like the Wilcox
+
+Ranked-Sign Test because normality condition is well met and difference
+
+between different intervals is not large in the context of our problem which
+
+uses a 10 point scale.
+
+```{r}
+t.test(x=df_inf$a, y=df_inf$b, alternative = "two.sided",
+       paired = TRUE)
+```
+
+Since $p \approx 2.05 \times 10^{-7}$, we have statistically significant evidence at every
+
+reasonable alpha level ($\alpha = 0.01, 0.05, 0.10$) that the difference in means
+
+is not equal to 0 (more students may have misjudged the difficulty).
+
+# V. Further work and Interactives
+
+**To what extent did the 8 themes of APUSH show up on the exam, on**
+
+**a scale of 1-5?**
+
+```{r}
+df_themes = d2 %>% 
+ pivot_longer(
+      cols = theme1:theme8,
+      names_to = "theme",
+      values_to = "exam_freq"
+)
+
+g_anim1 <- ggplot(df_themes, aes(x = exam_freq)) +
+  geom_bar(
+    fill     = "steelblue",
+    color    = "black",
+    width    = 0.8
+  ) +
+  scale_x_continuous(breaks = 1:8, minor_breaks = NULL) +
+  labs(
+    x     = "Rating (1 = Never; 5 = Very Frequently)",
+    y     = "Number of Students",
+    title = "How frequently did themes 1-8 show up on the exam? ({closest_state})"
+  ) +
+  theme_minimal() +
+  transition_states(
+    states         = theme,
+    transition_length = 2,   # how many frames it takes to tween between topics
+    state_length     = 1    # how many frames to hold each topic
+  ) +
+  ease_aes("sine-in-out")   # smoother easing between states
+
+g_anim1
+```
+
+```{r, eval = FALSE}
+anim_output <- animate(
+  g_anim1,
+  nframes = 80,   # total frames (8 states × 10 frames per state roughly)
+  fps     = 10,   # 10 frames per second → ~8 seconds animation
+  width   = 600,
+  height  = 400
+)
+
+# Preview in RStudio Viewer or save to disk:
+anim_output
+anim_save("theme_freq_animation.gif", animation = anim_output)
+```
+
+**How difficult are the benchmark "thinking skills" of the course,**
+
+**on a scale of 1-5?**
+
+```{r}
+df_themes = d2 %>% 
+ pivot_longer(
+      cols = c(Developments.and.Processes, Sourcing.and.Citation,
+               Claim.and.Evidence.in.Sources, Contextualization,
+               Making.Connections, Argumentation),
+      names_to = "skills",
+      values_to = "difficulty"
+)
+
+g_anim2 <- ggplot(df_themes, aes(x = difficulty)) +
+  geom_bar(
+    fill     = "steelblue",
+    color    = "black",
+    width    = 0.8
+  ) +
+  scale_x_continuous(breaks = 1:8, minor_breaks = NULL) +
+  labs(
+    x     = "Rating (1 = Easy; 5 = Hard)",
+    y     = "Number of Students",
+    title = "Benchmark 'thinking skills' difficulty ({closest_state})"
+  ) +
+  theme_minimal() +
+  transition_states(
+    states         = skills,
+    transition_length = 2,   # how many frames it takes to tween between topics
+    state_length     = 2    # how many frames to hold each topic
+  ) +
+  ease_aes("sine-in-out")   # smoother easing between states
+
+g_anim2
+```
+
+```{r, eval = FALSE}
+anim_output <- animate(
+  g_anim2,
+  nframes = 80,   # total frames (8 states × 10 frames per state roughly)
+  fps     = 10,   # 10 frames per second → ~8 seconds animation
+  width   = 600,
+  height  = 400
+)
+
+# Preview in RStudio Viewer or save to disk:
+anim_output
+anim_save("skill_diff_animation.gif", animation = anim_output)
+```
